@@ -1,4 +1,4 @@
-# ScrollerRoller
+# autoscroller
 
 Sheet music that scrolls by itself. Add a PDF or photos of a song, set how long the song is, and press play.
 

@@ -1,6 +1,6 @@
 {
-  "name": "ScrollerRoller",
-  "short_name": "ScrollerRoller",
+  "name": "autoscroller",
+  "short_name": "autoscroller",
   "description": "Sheet music that scrolls by itself.",
   "start_url": "./",
   "scope": "./",
