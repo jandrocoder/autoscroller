@@ -1,4 +1,4 @@
-const CACHE = 'autoscroller-v2';
+const CACHE = 'autoscroller-v3';
 const FILES = ['./', 'index.html', 'pdf.min.js', 'pdf.worker.min.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));

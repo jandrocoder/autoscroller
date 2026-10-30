@@ -117,6 +117,18 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
 .psnip { color: var(--muted); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ptitle { width: 100%; min-width: 0; font: inherit; font-weight: 650; color: var(--fg); background: var(--surface-2); border: 0; border-radius: 8px; padding: 8px 10px; }
 .plab { font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 4px; flex: none; }
+.tabs { display: flex; gap: 6px; background: var(--surface-2); padding: 4px; border-radius: 14px; }
+.tab { flex: 1; min-height: 44px; border: 0; background: none; border-radius: 11px; font-weight: 700; color: var(--muted); }
+.tab[aria-selected="true"] { background: var(--surface); color: var(--fg); box-shadow: 0 1px 0 var(--line); }
+.tools { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 16px; display: flex; flex-direction: column; gap: 10px; }
+.tools .row { display: flex; gap: 10px; }
+.tools .row .ghost { flex: 1; }
+.sheet .paper { box-sizing: border-box; min-height: 100%; background: #fff; color: #161210; font-family: var(--mono); font-size: clamp(15px, 4.4vw, 22px); line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; padding: 18px 16px 28px; }
+.sheet .paper h2 { font-family: var(--font); margin: 0 0 14px; font-size: 1.35em; line-height: 1.2; }
+#editView { position: fixed; inset: 0; z-index: 6; min-height: 0; background: var(--bg); }
+.edtitle { flex: 1; min-width: 0; font: inherit; font-weight: 700; font-size: 1.05rem; background: var(--surface-2); color: var(--fg); border: 0; border-radius: 12px; padding: 10px 12px; }
+.edtext { flex: 1; min-height: 0; width: 100%; box-sizing: border-box; resize: none; border: 0; border-radius: 0; background: #fff; color: #161210; font-family: var(--mono); font-size: 16px; line-height: 1.5; padding: 16px; white-space: pre-wrap; overflow: auto; }
+.edhint { padding-block: 8px calc(8px + env(safe-area-inset-bottom, 0px)); background: var(--surface); border-top: 1px solid var(--line); }
 @media (prefers-reduced-motion: reduce) { .toggle::after { transition: none; } }
 </style>
 
@@ -135,13 +147,30 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
       <p class="privacy">Songs are saved only on this phone. Nothing is uploaded or shared, and it keeps working without internet.</p>
     </header>
     <div class="lib-body gutter">
+      <div class="tabs" role="tablist">
+        <button class="tab" id="tabSongs" type="button" role="tab" aria-selected="true">Songs</button>
+        <button class="tab" id="tabWritten" type="button" role="tab" aria-selected="false">Written</button>
+      </div>
       <button class="add" id="addBtn" type="button">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
         Add a song
       </button>
+      <button class="add" id="writeBtn" type="button" hidden>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>
+        Write a song
+      </button>
       <input id="fileIn" type="file" accept="application/pdf,image/*" multiple hidden>
       <div class="status" id="libStatus" role="status"></div>
       <div id="songList" style="display:flex;flex-direction:column;gap:10px"></div>
+      <div class="tools">
+        <p class="hint">Keep your songs safe. Back them up to a file you can save in Files or iCloud, and restore them from it if the phone ever loses them.</p>
+        <div class="row">
+          <button class="ghost" id="backupBtn" type="button">Back up songs</button>
+          <button class="ghost" id="restoreBtn" type="button">Restore</button>
+        </div>
+        <input id="restoreIn" type="file" accept="application/json,.json" hidden>
+        <p class="hint" id="backupInfo"></p>
+      </div>
     </div>
   </section>
 
@@ -157,18 +186,33 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
     </div>
   </section>
 
+  <section class="view" id="editView" hidden>
+    <div class="topbar gutter">
+      <button class="icon-btn" id="edBack" type="button" aria-label="Back to songs">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <input class="edtitle" id="edTitle" type="text" placeholder="Song title" maxlength="80" aria-label="Song title">
+      <button class="ghost" id="edDone" type="button" style="min-height:44px;padding:0 16px">Done</button>
+    </div>
+    <textarea class="edtext" id="edText" placeholder="Write your song here. Put the chords on their own line above the words." spellcheck="false" autocapitalize="off" autocorrect="off" aria-label="Song text"></textarea>
+    <p class="hint gutter edhint">It saves as you type. Use spaces to line the chords up over the words.</p>
+  </section>
+
   <section class="view" id="playView" hidden>
     <div class="topbar gutter">
       <button class="icon-btn" id="backBtn" type="button" aria-label="Back to songs">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
       </button>
       <div class="title" id="songTitle"></div>
+      <button class="icon-btn" id="editBtn" type="button" aria-label="Edit song" hidden>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>
+      </button>
       <div class="readout" id="paceOut"></div>
     </div>
     <div class="sheet-wrap">
       <div class="sheet" id="sheet"></div>
       <div class="count" id="count" hidden></div>
-      <div class="tapnote" id="tapnote">Tap the sheet to start or stop</div>
+      <div class="tapnote" id="tapnote">Tap the sheet to start or stop. Drag to move it by hand.</div>
     </div>
     <div class="dock gutter">
       <div class="row1">
@@ -186,7 +230,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
         <div class="opt"><label for="countT">3-2-1 count-in</label><input type="checkbox" class="toggle" id="countT"></div>
         <div class="opt"><span class="lab">Sheet</span><div class="mini"><button id="topBtn" type="button">Back to top</button></div></div>
       </div>
-      <p class="hint">Speed is how many screens of sheet go by each minute. Now it takes <b id="screenSecs">15</b> s per screen. Tap the sheet to stop, tap again to keep going.</p>
+      <p class="hint">Speed is how many screens of sheet go by each minute. Now it takes <b id="screenSecs">15</b> s per screen. Tap the sheet to stop, tap again to keep going. Dragging it by hand does not stop it.</p>
     </div>
   </section>
 </div>
@@ -225,16 +269,39 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
   const delSong = (id) => tx('readwrite', (s) => s.delete(id));
 
   /* ---------- library ---------- */
-  let armed = null;
+  const ls = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+  };
+  let armed = null, tab = ls.get('tab') === 'written' ? 'written' : 'songs';
+  function setTab(t) {
+    tab = t; ls.set('tab', t); armed = null;
+    $('tabSongs').setAttribute('aria-selected', t === 'songs'); $('tabWritten').setAttribute('aria-selected', t === 'written');
+    $('addBtn').hidden = t !== 'songs'; $('writeBtn').hidden = t !== 'written';
+    renderLib();
+  }
+  $('tabSongs').onclick = () => { $('libStatus').textContent = ''; setTab('songs'); };
+  $('tabWritten').onclick = () => { $('libStatus').textContent = ''; setTab('written'); };
+  function backupInfo(written) {
+    const t = +ls.get('lastBackup');
+    $('backupInfo').textContent = t ? 'Last backup: ' + new Date(t).toLocaleDateString() : (written ? 'No backup yet. Your written songs only exist on this phone.' : 'No backup yet.');
+  }
   async function renderLib() {
     const list = $('songList');
-    let songs = [];
-    try { songs = await allSongs(); } catch (e) { $('libStatus').textContent = 'This browser blocked local storage, so songs cannot be saved here.'; }
+    let all = [];
+    try { all = await allSongs(); } catch (e) { $('libStatus').textContent = 'This browser blocked local storage, so songs cannot be saved here.'; }
+    const nWritten = all.filter((x) => x.kind === 'text').length;
+    $('tabSongs').textContent = 'Songs' + (all.length - nWritten ? ' · ' + (all.length - nWritten) : '');
+    $('tabWritten').textContent = 'Written' + (nWritten ? ' · ' + nWritten : '');
+    backupInfo(nWritten > 0);
+    const songs = all.filter((x) => (x.kind === 'text') === (tab === 'written'));
     list.textContent = '';
     if (!songs.length) {
       const d = document.createElement('div');
       d.className = 'empty';
-      d.innerHTML = '<strong>No songs yet.</strong><br>Add a PDF of the sheet music, or one or more photos or screenshots of it. Then open it, set the song length and press play.';
+      d.innerHTML = tab === 'written'
+        ? '<strong>Nothing written yet.</strong><br>Tap Write a song to start a blank page. Songs you write live here, apart from the ones you add.'
+        : '<strong>No songs yet.</strong><br>Add a PDF of the sheet music, or one or more photos or screenshots of it. Then open it, set the speed and press play.';
       list.appendChild(d);
       return;
     }
@@ -243,7 +310,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
       const open = document.createElement('button'); open.className = 'song-open'; open.type = 'button';
       const n = document.createElement('span'); n.className = 'song-name'; n.textContent = s.name;
       const m = document.createElement('span'); m.className = 'song-meta';
-      m.textContent = (s.kind === 'pdf' ? (s.from ? (s.from === s.to ? 'Page ' + s.from : 'Pages ' + s.from + '–' + s.to) : 'PDF') : (s.files || s.blobs).length + ((s.files || s.blobs).length === 1 ? ' image' : ' images')) + ' · speed ' + (s.speed || 4).toFixed(1);
+      m.textContent = s.kind === 'text' ? 'Written · ' + ((s.text || '').split('\n').length) + ' lines · speed ' + (s.speed || 4).toFixed(1) : (s.kind === 'pdf' ? (s.from ? (s.from === s.to ? 'Page ' + s.from : 'Pages ' + s.from + '–' + s.to) : 'PDF') : (s.files || s.blobs).length + ((s.files || s.blobs).length === 1 ? ' image' : ' images')) + ' · speed ' + (s.speed || 4).toFixed(1);
       open.append(n, m);
       open.onclick = () => openSong(s);
       const del = document.createElement('button'); del.className = 'song-del'; del.type = 'button';
@@ -274,6 +341,91 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
     try { await putSong(song); $('libStatus').textContent = 'Saved on this phone.'; }
     catch (err) { $('libStatus').textContent = 'Could not save. The phone may be out of space.'; }
     renderLib();
+  };
+
+  /* ---------- write a song ---------- */
+  let E = null, edT;
+  function startEdit(song, isNew) {
+    E = { song, isNew };
+    $('edTitle').value = song.name || ''; $('edText').value = song.text || '';
+    $('libView').hidden = true; $('playView').hidden = true; $('editView').hidden = false;
+    document.body.classList.add('playing');
+    if (isNew) $('edTitle').focus();
+  }
+  function saveEdit() {
+    clearTimeout(edT);
+    edT = setTimeout(() => { if (E) putSong(E.song).catch(() => {}); }, 500);
+  }
+  function onEdit() {
+    E.song.name = $('edTitle').value.trim() || 'Untitled song';
+    E.song.text = $('edText').value;
+    saveEdit();
+  }
+  $('edTitle').oninput = onEdit;
+  $('edText').oninput = onEdit;
+  async function finishEdit() {
+    clearTimeout(edT);
+    const song = E.song, isNew = E.isNew;
+    E = null;
+    $('editView').hidden = true;
+    if (isNew && !song.text.trim() && (!song.name || song.name === 'Untitled song')) { await delSong(song.id).catch(() => {}); }
+    else await putSong(song).catch(() => {});
+    if (isNew || !S.song || S.song.id !== song.id) { document.body.classList.remove('playing'); $('libView').hidden = false; setTab('written'); }
+    else openSong(song);
+  }
+  $('edBack').onclick = finishEdit;
+  $('edDone').onclick = finishEdit;
+  $('writeBtn').onclick = () => startEdit({ id: Date.now().toString(36), added: Date.now(), name: '', kind: 'text', text: '', speed: 4, count: true }, true);
+  $('editBtn').onclick = () => { stop(); startEdit(S.song, false); };
+
+  /* ---------- back up and restore ---------- */
+  function toB64(buf) {
+    const u = new Uint8Array(buf); let b = '';
+    for (let i = 0; i < u.length; i += 0x8000) b += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+    return btoa(b);
+  }
+  function fromB64(str) {
+    const b = atob(str), u = new Uint8Array(b.length);
+    for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i);
+    return u.buffer;
+  }
+  $('backupBtn').onclick = async () => {
+    $('libStatus').textContent = 'Preparing the backup…';
+    try {
+      const out = [];
+      for (const song of await allSongs()) {
+        const copy = Object.assign({}, song); delete copy.blobs;
+        const raw = song.files || (song.blobs ? await Promise.all(song.blobs.map(async (b) => ({ type: b.type, data: await b.arrayBuffer() }))) : null);
+        if (raw) copy.files = raw.map((f) => ({ type: f.type, data: toB64(f.data) })); else delete copy.files;
+        out.push(copy);
+      }
+      const name = 'autoscroller-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+      const file = new File([JSON.stringify({ app: 'autoscroller', version: 1, songs: out })], name, { type: 'application/json' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file], title: 'autoscroller backup' }); }
+        catch (e) { if (e && e.name === 'AbortError') { $('libStatus').textContent = ''; return; } throw e; }
+      } else {
+        const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = name; document.body.appendChild(a); a.click(); a.remove();
+      }
+      ls.set('lastBackup', String(Date.now()));
+      $('libStatus').textContent = out.length + (out.length === 1 ? ' song' : ' songs') + ' in the backup. Save the file somewhere safe.';
+      backupInfo(false);
+    } catch (e) { $('libStatus').textContent = 'The backup did not work. Try again.'; }
+  };
+  $('restoreBtn').onclick = () => $('restoreIn').click();
+  $('restoreIn').onchange = async (e) => {
+    const f = e.target.files[0]; e.target.value = '';
+    if (!f) return;
+    try {
+      const data = JSON.parse(await f.text());
+      if (data.app !== 'autoscroller' || !Array.isArray(data.songs)) throw new Error('not a backup');
+      for (const song of data.songs) {
+        if (song.files) song.files = song.files.map((x) => ({ type: x.type, data: fromB64(x.data) }));
+        await putSong(song);
+      }
+      $('libStatus').textContent = data.songs.length + (data.songs.length === 1 ? ' song' : ' songs') + ' restored.';
+      renderLib();
+    } catch (err) { $('libStatus').textContent = 'That file is not an autoscroller backup.'; }
   };
 
   /* ---------- PDF helpers ---------- */
@@ -371,7 +523,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
       const kept = (await allSongs()).length;
       $('libStatus').textContent = kept + (kept === 1 ? ' song is' : ' songs are') + ' saved on this phone.';
     } catch (e) { $('libStatus').textContent = 'Could not save. The phone may be out of space.'; }
-    split = null; $('splitView').hidden = true; $('libView').hidden = false; renderLib();
+    split = null; $('splitView').hidden = true; $('libView').hidden = false; setTab('songs');
   };
 
   /* ---------- sheet rendering ---------- */
@@ -380,7 +532,12 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
     const token = ++renderToken, sheet = $('sheet');
     urls.forEach((u) => URL.revokeObjectURL(u)); urls = [];
     sheet.textContent = '';
-    if (song.kind === 'img') {
+    if (song.kind === 'text') {
+      const p = document.createElement('div'); p.className = 'paper';
+      const h = document.createElement('h2'); h.textContent = song.name;
+      p.append(h, document.createTextNode(song.text || ''));
+      sheet.appendChild(p);
+    } else if (song.kind === 'img') {
       for (const b of songBlobs(song)) {
         const u = URL.createObjectURL(b); urls.push(u);
         const im = document.createElement('img'); im.src = u; im.alt = ''; sheet.appendChild(im);
@@ -418,9 +575,10 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
   /* ---------- views ---------- */
   async function openSong(song) {
     S.song = song; S.speed = song.speed || 4; S.count = song.count !== false; S.counted = false;
-    $('libView').hidden = true; $('playView').hidden = false;
+    $('libView').hidden = true; $('editView').hidden = true; $('playView').hidden = false;
     document.body.classList.add('playing');
     $('songTitle').textContent = song.name;
+    $('editBtn').hidden = song.kind !== 'text';
     syncUI();
     $('tapnote').hidden = false; setTimeout(() => ($('tapnote').hidden = true), 4000);
     $('sheet').scrollTop = 0; S.pos = 0;
@@ -431,7 +589,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
     stop(); renderToken++;
     $('playView').hidden = true; $('libView').hidden = false;
     document.body.classList.remove('playing');
-    armed = null; renderLib();
+    setTab(S.song && S.song.kind === 'text' ? 'written' : 'songs');
   }
   $('backBtn').onclick = closeSong;
 
@@ -465,7 +623,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
   $('topBtn').onclick = () => { if (S.playing) stop(); $('sheet').scrollTop = 0; S.pos = 0; S.counted = false; syncUI(); };
 
   /* ---------- scrolling ---------- */
-  let ac, wake, startTimers = [], lastUi = 0;
+  let ac, wake, startTimers = [], lastUi = 0, lastUser = 0, lastSet = 0, touching = false;
   function blip(t, hi) {
     const o = ac.createOscillator(), g = ac.createGain();
     o.frequency.value = hi ? 1500 : 1000; o.connect(g); g.connect(ac.destination);
@@ -476,9 +634,13 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
     if (!S.scrolling) return;
     const sheet = $('sheet'), dt = (now - S.last) / 1000; S.last = now;
     const max = sheet.scrollHeight - sheet.clientHeight;
-    S.pos += (sheet.clientHeight * S.speed / 60) * dt;
-    if (S.pos >= max) { sheet.scrollTop = max; stop(); return; }
-    sheet.scrollTop = S.pos;
+    if (touching || performance.now() - lastUser < 250) {
+      S.pos = sheet.scrollTop; lastSet = S.pos; // being moved by hand: pick up from wherever it ends
+    } else {
+      S.pos += (sheet.clientHeight * S.speed / 60) * dt;
+      if (S.pos >= max) { sheet.scrollTop = max; stop(); return; }
+      sheet.scrollTop = S.pos; lastSet = sheet.scrollTop;
+    }
     if (now - lastUi > 500) { lastUi = now; syncUI(); }
     S.raf = requestAnimationFrame(frame);
   }
@@ -514,16 +676,22 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
   }
   $('playBtn').onclick = () => (S.playing ? stop() : play());
   $('sheet').addEventListener('click', () => (S.playing ? stop() : play()));
-  // Touching or dragging the sheet pauses auto-scroll so the player can move it by hand.
-  ['touchmove', 'wheel'].forEach((ev) => $('sheet').addEventListener(ev, () => { if (S.playing) stop(); }, { passive: true }));
-  $('sheet').addEventListener('scroll', () => { if (!S.scrolling) syncUI(); }, { passive: true });
+  // Dragging or flicking the sheet moves it by hand and the auto-scroll carries on from there. Only a tap stops it.
+  const sh = $('sheet');
+  sh.addEventListener('touchstart', () => { touching = true; lastUser = performance.now(); }, { passive: true });
+  ['touchend', 'touchcancel'].forEach((ev) => sh.addEventListener(ev, () => { touching = false; lastUser = performance.now(); }, { passive: true }));
+  sh.addEventListener('wheel', () => { lastUser = performance.now(); }, { passive: true });
+  sh.addEventListener('scroll', () => {
+    if (Math.abs(sh.scrollTop - lastSet) > 2) lastUser = performance.now();
+    if (!S.scrolling) syncUI();
+  }, { passive: true });
   document.addEventListener('visibilitychange', () => { if (document.hidden && S.playing) stop(); });
 
   // Ask the phone to keep this app's saved songs instead of clearing them when space is low.
   try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
   syncUI();
-  renderLib();
+  setTab(tab);
 })();
 </script>
 
