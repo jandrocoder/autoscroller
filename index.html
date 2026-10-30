@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>autoscroller</title>
-<meta name="theme-color" content="#2f55d4">
+<meta name="theme-color" content="#d6001c">
 <meta name="color-scheme" content="light dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -21,29 +21,31 @@ body { margin: 0; }
 <style>
 /* Layout: two full-height views. Library list, or a player with a sheet scroller above a control dock. */
 :root {
-  --bg: #eef0f4;
+  --bg: #f6f1e7;
   --surface: #ffffff;
-  --surface-2: #e2e6ee;
-  --fg: #151a26;
-  --muted: #5d667a;
-  --accent: #2f55d4;
+  --surface-2: #ece3d3;
+  --fg: #1d1512;
+  --muted: #6e5f52;
+  --accent: #d6001c;
   --on-accent: #ffffff;
-  --danger: #b3261e;
-  --line: #cfd5e1;
-  --stage: #20242f;
+  --danger: #8f0014;
+  --line: #ddd0bb;
+  --stage: #2a1d15;
+  --filter: #c98a4b;
+  --on-filter: #1d1512;
   --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0e1118; --surface: #171b25; --surface-2: #232938; --fg: #e8ebf3; --muted: #8f98ad;
-    --accent: #8ba7ff; --on-accent: #0c1330; --danger: #ff8a80; --line: #2b3244; --stage: #07090d;
+    --bg: #160e0b; --surface: #221612; --surface-2: #332219; --fg: #f6efe4; --muted: #b9a794;
+    --accent: #e3122d; --on-accent: #ffffff; --danger: #ff8a80; --line: #402c20; --stage: #0b0605;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0e1118; --surface: #171b25; --surface-2: #232938; --fg: #e8ebf3; --muted: #8f98ad;
-  --accent: #8ba7ff; --on-accent: #0c1330; --danger: #ff8a80; --line: #2b3244; --stage: #07090d;
+  --bg: #160e0b; --surface: #221612; --surface-2: #332219; --fg: #f6efe4; --muted: #b9a794;
+  --accent: #e3122d; --on-accent: #ffffff; --danger: #ff8a80; --line: #402c20; --stage: #0b0605;
   color-scheme: dark;
 }
 body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 16px; }
@@ -57,7 +59,9 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 
 /* Library */
 .lib-head { padding-block: 20px 8px; display: flex; flex-direction: column; gap: 6px; }
-.lib-head h1 { margin: 0; font-size: 2rem; letter-spacing: -0.02em; }
+.head-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.lib-head h1 { margin: 0; font-size: 2rem; letter-spacing: -0.02em; min-width: 0; }
+.pucho { display: inline-flex; align-items: center; gap: 6px; flex: none; background: var(--filter); color: var(--on-filter); font-weight: 800; font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 6px 10px 6px 8px; border-radius: 99px; }
 .privacy { margin: 0; color: var(--muted); font-size: 0.9rem; max-width: 46ch; line-height: 1.4; }
 .lib-body { flex: 1; padding-block: 12px 24px; display: flex; flex-direction: column; gap: 10px; }
 .add { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 56px; border-radius: 14px; background: var(--accent); color: var(--on-accent); border: 0; font-weight: 700; font-size: 1.05rem; }
@@ -121,7 +125,13 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
 <div id="app">
   <section class="view" id="libView">
     <header class="lib-head gutter">
-      <h1>autoscroller</h1>
+      <div class="head-row">
+        <h1>autoscroller</h1>
+        <span class="pucho">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M5.3 5.3l13.4 13.4"/></svg>
+          Pucho afuera
+        </span>
+      </div>
       <p class="privacy">Songs are saved only on this phone. Nothing is uploaded or shared, and it keeps working without internet.</p>
     </header>
     <div class="lib-body gutter">
@@ -165,18 +175,18 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
         <button class="play" id="playBtn" type="button" aria-label="Play"></button>
         <div class="bpm-box">
           <div class="bpm-line">
-            <button class="step" id="durDown" type="button" aria-label="Shorter song">−</button>
-            <div class="bpm-num"><b id="durNum">3:00</b><span>Song length</span></div>
-            <button class="step" id="durUp" type="button" aria-label="Longer song">+</button>
+            <button class="step" id="durDown" type="button" aria-label="Slower">−</button>
+            <div class="bpm-num"><b id="durNum">4.0</b><span>Speed · screens/min</span></div>
+            <button class="step" id="durUp" type="button" aria-label="Faster">+</button>
           </div>
-          <input type="range" id="durRange" min="30" max="600" step="5" aria-label="Song length in seconds">
+          <input type="range" id="durRange" min="0.5" max="12" step="0.1" aria-label="Scroll speed in screens per minute">
         </div>
       </div>
       <div class="row2">
         <div class="opt"><label for="countT">3-2-1 count-in</label><input type="checkbox" class="toggle" id="countT"></div>
         <div class="opt"><span class="lab">Sheet</span><div class="mini"><button id="topBtn" type="button">Back to top</button></div></div>
       </div>
-      <p class="hint">The sheet scrolls so the last line reaches the bottom exactly when the song ends. Set the length to match the song.</p>
+      <p class="hint">Speed is how many screens of sheet go by each minute. Now it takes <b id="screenSecs">15</b> s per screen. Tap the sheet to stop, tap again to keep going.</p>
     </div>
   </section>
 </div>
@@ -185,8 +195,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
 <script>
 (function () {
   const $ = (id) => document.getElementById(id);
-  const S = { song: null, dur: 180, count: true, playing: false, scrolling: false, pos: 0, last: 0, raf: 0 };
-  const fmt = (t) => Math.floor(t / 60) + ':' + String(Math.round(t % 60)).padStart(2, '0');
+  const S = { song: null, speed: 4, count: true, counted: false, playing: false, scrolling: false, pos: 0, last: 0, raf: 0 };
   const songBlobs = (x) => (x.files ? x.files.map((f) => new Blob([f.data], { type: f.type })) : x.blobs);
   const ICON_PLAY = '<svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
   const ICON_PAUSE = '<svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>';
@@ -234,7 +243,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
       const open = document.createElement('button'); open.className = 'song-open'; open.type = 'button';
       const n = document.createElement('span'); n.className = 'song-name'; n.textContent = s.name;
       const m = document.createElement('span'); m.className = 'song-meta';
-      m.textContent = (s.kind === 'pdf' ? (s.from ? (s.from === s.to ? 'Page ' + s.from : 'Pages ' + s.from + '–' + s.to) : 'PDF') : (s.files || s.blobs).length + ((s.files || s.blobs).length === 1 ? ' image' : ' images')) + ' · ' + fmt(s.dur || 180);
+      m.textContent = (s.kind === 'pdf' ? (s.from ? (s.from === s.to ? 'Page ' + s.from : 'Pages ' + s.from + '–' + s.to) : 'PDF') : (s.files || s.blobs).length + ((s.files || s.blobs).length === 1 ? ' image' : ' images')) + ' · speed ' + (s.speed || 4).toFixed(1);
       open.append(n, m);
       open.onclick = () => openSong(s);
       const del = document.createElement('button'); del.className = 'song-del'; del.type = 'button';
@@ -260,7 +269,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
     if (pdf) { startSplit(pdf); return; }
     const song = {
       id: Date.now().toString(36), added: Date.now(), name: base.replace(/\.[^.]+$/, ''),
-      kind: 'img', files: await Promise.all(imgs.map(async (f) => ({ type: f.type, data: await f.arrayBuffer() }))), dur: 180, count: true,
+      kind: 'img', files: await Promise.all(imgs.map(async (f) => ({ type: f.type, data: await f.arrayBuffer() }))), speed: 4, count: true,
     };
     try { await putSong(song); $('libStatus').textContent = 'Saved on this phone.'; }
     catch (err) { $('libStatus').textContent = 'Could not save. The phone may be out of space.'; }
@@ -356,7 +365,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
         const p = starts[i], end = i + 1 < starts.length ? starts[i + 1].n - 1 : total;
         await putSong({
           id: now.toString(36) + i, added: now - i, name: p.title.trim() || 'Song from page ' + p.n,
-          kind: 'pdf', files: [split.file], from: p.n, to: end, dur: 180, count: true,
+          kind: 'pdf', files: [split.file], from: p.n, to: end, speed: 4, count: true,
         });
       }
       const kept = (await allSongs()).length;
@@ -408,7 +417,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
 
   /* ---------- views ---------- */
   async function openSong(song) {
-    S.song = song; S.dur = song.dur || 180; S.count = song.count !== false;
+    S.song = song; S.speed = song.speed || 4; S.count = song.count !== false; S.counted = false;
     $('libView').hidden = true; $('playView').hidden = false;
     document.body.classList.add('playing');
     $('songTitle').textContent = song.name;
@@ -431,17 +440,16 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
   let saveT;
   function save() {
     clearTimeout(saveT);
-    saveT = setTimeout(() => { if (S.song) { S.song.dur = S.dur; S.song.count = S.count; putSong(S.song).catch(() => {}); } }, 400);
+    saveT = setTimeout(() => { if (S.song) { S.song.speed = S.speed; S.song.count = S.count; putSong(S.song).catch(() => {}); } }, 400);
   }
   function syncUI() {
-    const sh = $('sheet'), max = Math.max(1, sh.scrollHeight - sh.clientHeight);
-    const at = S.scrolling ? S.pos : sh.scrollTop;
-    $('durNum').textContent = fmt(S.dur); $('durRange').value = S.dur; $('countT').checked = S.count;
-    $('paceOut').textContent = '-' + fmt(S.dur * (1 - Math.min(1, at / max)));
+    $('durNum').textContent = S.speed.toFixed(1); $('durRange').value = S.speed; $('countT').checked = S.count;
+    $('paceOut').textContent = S.speed.toFixed(1) + '/min';
+    $('screenSecs').textContent = Math.round(60 / S.speed);
     $('playBtn').innerHTML = S.playing ? ICON_PAUSE : ICON_PLAY;
     $('playBtn').setAttribute('aria-label', S.playing ? 'Pause' : 'Play');
   }
-  function setDur(v) { S.dur = clamp(Math.round(v), 20, 900); syncUI(); save(); }
+  function setSpeed(v) { S.speed = clamp(Math.round(v * 10) / 10, 0.5, 12); syncUI(); save(); }
   function hold(btn, fn) {
     let t, iv;
     const end = () => { clearTimeout(t); clearInterval(iv); };
@@ -450,11 +458,11 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
     btn.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); } });
     btn.addEventListener('contextmenu', (e) => e.preventDefault());
   }
-  hold($('durDown'), () => setDur(S.dur - 5));
-  hold($('durUp'), () => setDur(S.dur + 5));
-  $('durRange').oninput = (e) => setDur(+e.target.value);
+  hold($('durDown'), () => setSpeed(S.speed - 0.1));
+  hold($('durUp'), () => setSpeed(S.speed + 0.1));
+  $('durRange').oninput = (e) => setSpeed(+e.target.value);
   $('countT').onchange = (e) => { S.count = e.target.checked; save(); };
-  $('topBtn').onclick = () => { if (S.playing) stop(); $('sheet').scrollTop = 0; S.pos = 0; syncUI(); };
+  $('topBtn').onclick = () => { if (S.playing) stop(); $('sheet').scrollTop = 0; S.pos = 0; S.counted = false; syncUI(); };
 
   /* ---------- scrolling ---------- */
   let ac, wake, startTimers = [], lastUi = 0;
@@ -468,30 +476,34 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
     if (!S.scrolling) return;
     const sheet = $('sheet'), dt = (now - S.last) / 1000; S.last = now;
     const max = sheet.scrollHeight - sheet.clientHeight;
-    S.pos += (max / S.dur) * dt;
+    S.pos += (sheet.clientHeight * S.speed / 60) * dt;
     if (S.pos >= max) { sheet.scrollTop = max; stop(); return; }
     sheet.scrollTop = S.pos;
     if (now - lastUi > 500) { lastUi = now; syncUI(); }
     S.raf = requestAnimationFrame(frame);
   }
-  async function play() {
+  function beginScroll() {
+    $('count').hidden = true;
+    S.scrolling = true; S.last = performance.now(); S.raf = requestAnimationFrame(frame);
+  }
+  function play() {
     if (S.playing) return;
     S.playing = true; syncUI();
-    try { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); await ac.resume(); } catch (e) {}
-    try { wake = await navigator.wakeLock.request('screen'); } catch (e) {}
     $('tapnote').hidden = true;
     const sheet = $('sheet'), max = sheet.scrollHeight - sheet.clientHeight;
-    if (sheet.scrollTop >= max - 2) sheet.scrollTop = 0;
+    if (sheet.scrollTop >= max - 2) { sheet.scrollTop = 0; S.counted = false; }
     S.pos = sheet.scrollTop;
-    const lead = S.count ? 3 : 0;
+    try { navigator.wakeLock.request('screen').then((w) => { if (S.playing) wake = w; else w.release().catch(() => {}); }, () => {}); } catch (e) {}
+    // The 3-2-1 only runs the first time the song starts; after a pause it picks up right away.
+    const lead = S.count && !S.counted ? 3 : 0;
+    S.counted = true;
+    if (!lead) { beginScroll(); return; }
+    try { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); ac.resume(); } catch (e) {}
     for (let i = 0; i < lead; i++) {
       if (ac) blip(ac.currentTime + 0.05 + i, i === 0);
       startTimers.push(setTimeout(() => { $('count').hidden = false; $('count').textContent = lead - i; }, 50 + i * 1000));
     }
-    startTimers.push(setTimeout(() => {
-      $('count').hidden = true;
-      S.scrolling = true; S.last = performance.now(); S.raf = requestAnimationFrame(frame);
-    }, 50 + lead * 1000));
+    startTimers.push(setTimeout(beginScroll, 50 + lead * 1000));
   }
   function stop() {
     S.playing = false; S.scrolling = false; cancelAnimationFrame(S.raf);
