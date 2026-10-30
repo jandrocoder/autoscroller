@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ScrollerRoller</title>
+<meta name="theme-color" content="#2f55d4">
+<meta name="color-scheme" content="light dark">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ScrollerRoller">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; }
+[hidden] { display: none !important; }
+</style>
+<style>
+/* Layout: two full-height views. Library list, or a player with a sheet scroller above a control dock. */
+:root {
+  --bg: #eef0f4;
+  --surface: #ffffff;
+  --surface-2: #e2e6ee;
+  --fg: #151a26;
+  --muted: #5d667a;
+  --accent: #2f55d4;
+  --on-accent: #ffffff;
+  --danger: #b3261e;
+  --line: #cfd5e1;
+  --stage: #20242f;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1118; --surface: #171b25; --surface-2: #232938; --fg: #e8ebf3; --muted: #8f98ad;
+    --accent: #8ba7ff; --on-accent: #0c1330; --danger: #ff8a80; --line: #2b3244; --stage: #07090d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1118; --surface: #171b25; --surface-2: #232938; --fg: #e8ebf3; --muted: #8f98ad;
+  --accent: #8ba7ff; --on-accent: #0c1330; --danger: #ff8a80; --line: #2b3244; --stage: #07090d;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 16px; }
+body.playing { overflow: hidden; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.view { display: flex; flex-direction: column; min-height: 100vh; }
+#playView { position: fixed; inset: 0; z-index: 5; min-height: 0; background: var(--bg); }
+.sticky { position: sticky; bottom: 0; z-index: 2; }
+.gutter { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* Library */
+.lib-head { padding-block: 20px 8px; display: flex; flex-direction: column; gap: 6px; }
+.lib-head h1 { margin: 0; font-size: 2rem; letter-spacing: -0.02em; }
+.privacy { margin: 0; color: var(--muted); font-size: 0.9rem; max-width: 46ch; line-height: 1.4; }
+.lib-body { flex: 1; padding-block: 12px 24px; display: flex; flex-direction: column; gap: 10px; }
+.add { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 56px; border-radius: 14px; background: var(--accent); color: var(--on-accent); border: 0; font-weight: 700; font-size: 1.05rem; }
+.song { display: flex; align-items: stretch; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.song-open { flex: 1; min-width: 0; text-align: left; background: none; border: 0; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+.song-name { font-weight: 650; overflow-wrap: anywhere; }
+.song-meta { color: var(--muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.song-del { border: 0; border-left: 1px solid var(--line); background: none; padding: 0 16px; color: var(--muted); font-size: 0.85rem; min-width: 76px; }
+.song-del.armed { background: var(--danger); color: var(--bg); font-weight: 700; }
+.empty { border: 1.5px dashed var(--line); border-radius: 14px; padding: 24px 18px; color: var(--muted); line-height: 1.5; }
+.empty strong { color: var(--fg); }
+.status { color: var(--muted); font-size: 0.9rem; min-height: 1.2em; }
+
+/* Player */
+.topbar { display: flex; align-items: center; gap: 10px; padding-block: 8px; padding-top: calc(8px + env(safe-area-inset-top, 0px)); background: var(--surface); border-bottom: 1px solid var(--line); }
+.icon-btn { width: 44px; height: 44px; border-radius: 12px; border: 0; background: var(--surface-2); display: grid; place-items: center; flex: none; }
+.title { flex: 1; min-width: 0; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.readout { font-family: var(--mono); font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.sheet-wrap { position: relative; flex: 1; min-height: 0; background: var(--stage); }
+.sheet { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+.sheet canvas, .sheet img { display: block; width: 100%; height: auto; background: #fff; }
+.sheet .pad { height: 8px; }
+#topBtn { width: auto; padding: 0 12px; }
+.count { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; font-size: 9rem; font-weight: 800; color: var(--accent); text-shadow: 0 0 40px var(--stage); font-variant-numeric: tabular-nums; }
+.tapnote { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--line); padding: 6px 12px; border-radius: 99px; font-size: 0.8rem; color: var(--muted); pointer-events: none; white-space: nowrap; }
+
+.dock { background: var(--surface); border-top: 1px solid var(--line); padding-block: 12px calc(12px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 12px; }
+.row1 { display: flex; align-items: center; gap: 14px; }
+.play { width: 72px; height: 72px; border-radius: 50%; border: 0; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; flex: none; }
+.bpm-box { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.bpm-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.step { width: 44px; height: 44px; border-radius: 12px; border: 0; background: var(--surface-2); font-size: 1.5rem; line-height: 1; display: grid; place-items: center; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.bpm-num { text-align: center; font-variant-numeric: tabular-nums; line-height: 1; }
+.bpm-num b { font-size: 2.2rem; letter-spacing: -0.02em; }
+.bpm-num span { display: block; font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.opt { background: var(--surface-2); border-radius: 12px; padding: 8px 10px; display: flex; align-items: center; justify-content: space-between; gap: 6px; min-width: 0; }
+.opt label, .opt .lab { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); line-height: 1.2; }
+.opt .mini { display: flex; align-items: center; gap: 6px; }
+.opt .mini button { width: 34px; height: 34px; border-radius: 9px; border: 0; background: var(--surface); font-size: 1.1rem; }
+.opt .val { min-width: 1.6ch; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.toggle { appearance: none; -webkit-appearance: none; width: 46px; height: 28px; border-radius: 99px; background: var(--line); position: relative; margin: 0; flex: none; cursor: pointer; }
+.toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: var(--surface); transition: transform 0.15s; }
+.toggle:checked { background: var(--accent); }
+.toggle:checked::after { transform: translateX(18px); }
+.hint { margin: 0; font-size: 0.78rem; color: var(--muted); line-height: 1.35; }
+.ghost { min-height: 48px; border-radius: 14px; border: 1px solid var(--line); background: none; font-weight: 600; }
+.prow { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; min-height: 56px; }
+.prow.start { border-color: var(--accent); }
+.pnum { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); width: 3.2ch; flex: none; font-variant-numeric: tabular-nums; }
+.pmid { flex: 1; min-width: 0; }
+.psnip { color: var(--muted); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ptitle { width: 100%; min-width: 0; font: inherit; font-weight: 650; color: var(--fg); background: var(--surface-2); border: 0; border-radius: 8px; padding: 8px 10px; }
+.plab { font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 4px; flex: none; }
+@media (prefers-reduced-motion: reduce) { .toggle::after { transition: none; } }
+</style>
+
+</head>
+<body>
+<div id="app">
+  <section class="view" id="libView">
+    <header class="lib-head gutter">
+      <h1>ScrollerRoller</h1>
+      <p class="privacy">Songs are saved only on this phone. Nothing is uploaded or shared, and it keeps working without internet.</p>
+    </header>
+    <div class="lib-body gutter">
+      <button class="add" id="addBtn" type="button">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        Add a song
+      </button>
+      <input id="fileIn" type="file" accept="application/pdf,image/*" multiple hidden>
+      <div class="status" id="libStatus" role="status"></div>
+      <div id="songList" style="display:flex;flex-direction:column;gap:10px"></div>
+    </div>
+  </section>
+
+  <section class="view" id="splitView" hidden>
+    <header class="lib-head gutter">
+      <h1 style="font-size:1.5rem">Check your songs</h1>
+      <p class="privacy" id="splitInfo"></p>
+    </header>
+    <div class="lib-body gutter" id="splitList"></div>
+    <div class="dock gutter sticky">
+      <button class="add" id="splitSave" type="button">Save songs</button>
+      <button class="ghost" id="splitCancel" type="button">Cancel</button>
+    </div>
+  </section>
+
+  <section class="view" id="playView" hidden>
+    <div class="topbar gutter">
+      <button class="icon-btn" id="backBtn" type="button" aria-label="Back to songs">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <div class="title" id="songTitle"></div>
+      <div class="readout" id="paceOut"></div>
+    </div>
+    <div class="sheet-wrap">
+      <div class="sheet" id="sheet"></div>
+      <div class="count" id="count" hidden></div>
+      <div class="tapnote" id="tapnote">Tap the sheet to start or stop</div>
+    </div>
+    <div class="dock gutter">
+      <div class="row1">
+        <button class="play" id="playBtn" type="button" aria-label="Play"></button>
+        <div class="bpm-box">
+          <div class="bpm-line">
+            <button class="step" id="durDown" type="button" aria-label="Shorter song">−</button>
+            <div class="bpm-num"><b id="durNum">3:00</b><span>Song length</span></div>
+            <button class="step" id="durUp" type="button" aria-label="Longer song">+</button>
+          </div>
+          <input type="range" id="durRange" min="30" max="600" step="5" aria-label="Song length in seconds">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="opt"><label for="countT">3-2-1 count-in</label><input type="checkbox" class="toggle" id="countT"></div>
+        <div class="opt"><span class="lab">Sheet</span><div class="mini"><button id="topBtn" type="button">Back to top</button></div></div>
+      </div>
+      <p class="hint">The sheet scrolls so the last line reaches the bottom exactly when the song ends. Set the length to match the song.</p>
+    </div>
+  </section>
+</div>
+
+<script src="pdf.min.js"></script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const S = { song: null, dur: 180, count: true, playing: false, scrolling: false, pos: 0, last: 0, raf: 0 };
+  const fmt = (t) => Math.floor(t / 60) + ':' + String(Math.round(t % 60)).padStart(2, '0');
+  const songBlobs = (x) => (x.files ? x.files.map((f) => new Blob([f.data], { type: f.type })) : x.blobs);
+  const ICON_PLAY = '<svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+  const ICON_PAUSE = '<svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>';
+
+  /* ---------- storage (IndexedDB, stays on this device) ---------- */
+  let dbp;
+  function db() {
+    if (!dbp) dbp = new Promise((res, rej) => {
+      const r = indexedDB.open('atril', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('songs', { keyPath: 'id' });
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+    return dbp;
+  }
+  async function tx(mode, fn) {
+    const d = await db();
+    return new Promise((res, rej) => {
+      const t = d.transaction('songs', mode);
+      const out = fn(t.objectStore('songs'));
+      t.oncomplete = () => res(out && out.result !== undefined ? out.result : undefined);
+      t.onerror = () => rej(t.error);
+    });
+  }
+  const allSongs = () => tx('readonly', (s) => s.getAll()).then((x) => (x || []).sort((a, b) => b.added - a.added));
+  const putSong = (song) => tx('readwrite', (s) => s.put(song));
+  const delSong = (id) => tx('readwrite', (s) => s.delete(id));
+
+  /* ---------- library ---------- */
+  let armed = null;
+  async function renderLib() {
+    const list = $('songList');
+    let songs = [];
+    try { songs = await allSongs(); } catch (e) { $('libStatus').textContent = 'This browser blocked local storage, so songs cannot be saved here.'; }
+    list.textContent = '';
+    if (!songs.length) {
+      const d = document.createElement('div');
+      d.className = 'empty';
+      d.innerHTML = '<strong>No songs yet.</strong><br>Add a PDF of the sheet music, or one or more photos or screenshots of it. Then open it, set the song length and press play.';
+      list.appendChild(d);
+      return;
+    }
+    for (const s of songs) {
+      const row = document.createElement('div'); row.className = 'song';
+      const open = document.createElement('button'); open.className = 'song-open'; open.type = 'button';
+      const n = document.createElement('span'); n.className = 'song-name'; n.textContent = s.name;
+      const m = document.createElement('span'); m.className = 'song-meta';
+      m.textContent = (s.kind === 'pdf' ? (s.from ? (s.from === s.to ? 'Page ' + s.from : 'Pages ' + s.from + '–' + s.to) : 'PDF') : (s.files || s.blobs).length + ((s.files || s.blobs).length === 1 ? ' image' : ' images')) + ' · ' + fmt(s.dur || 180);
+      open.append(n, m);
+      open.onclick = () => openSong(s);
+      const del = document.createElement('button'); del.className = 'song-del'; del.type = 'button';
+      del.textContent = armed === s.id ? 'Tap again' : 'Delete';
+      if (armed === s.id) del.classList.add('armed');
+      del.onclick = async () => {
+        if (armed === s.id) { armed = null; await delSong(s.id); } else armed = s.id;
+        renderLib();
+      };
+      row.append(open, del);
+      list.appendChild(row);
+    }
+  }
+  $('addBtn').onclick = () => $('fileIn').click();
+  $('fileIn').onchange = async (e) => {
+    const files = [...e.target.files];
+    e.target.value = '';
+    if (!files.length) return;
+    const pdf = files.find((f) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
+    const imgs = files.filter((f) => f.type.startsWith('image/')).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+    const base = (pdf || imgs[0] || {}).name;
+    if (!base) { $('libStatus').textContent = 'Choose a PDF or image files.'; return; }
+    if (pdf) { startSplit(pdf); return; }
+    const song = {
+      id: Date.now().toString(36), added: Date.now(), name: base.replace(/\.[^.]+$/, ''),
+      kind: 'img', files: await Promise.all(imgs.map(async (f) => ({ type: f.type, data: await f.arrayBuffer() }))), dur: 180, count: true,
+    };
+    try { await putSong(song); $('libStatus').textContent = 'Saved on this phone.'; }
+    catch (err) { $('libStatus').textContent = 'Could not save. The phone may be out of space.'; }
+    renderLib();
+  };
+
+  /* ---------- PDF helpers ---------- */
+  /*ANALYZE-START*/
+  let workerSet = false;
+  async function loadPdf(blob) {
+    if (!workerSet) { pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdf.worker.min.js'; workerSet = true; }
+    return pdfjsLib.getDocument({ data: await blob.arrayBuffer() }).promise;
+  }
+  // Page size, whether it has text, its first line, and the box the text fills (top-left origin, in points).
+  async function analyzePage(page) {
+    const vp = page.getViewport({ scale: 1 }), W = vp.width, H = vp.height;
+    const tc = await page.getTextContent();
+    const it = tc.items.filter((i) => i.str.trim());
+    if (!it.length) return { W, H, text: false, first: '', box: [0, 0, W, H] };
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+    for (const i of it) {
+      const h = i.height || 10, x = i.transform[4], y = i.transform[5];
+      x0 = Math.min(x0, x); x1 = Math.max(x1, x + i.width);
+      y0 = Math.min(y0, H - (y + h)); y1 = Math.max(y1, H - (y - 0.3 * h));
+    }
+    const t0 = it[0].transform[5];
+    const first = it.filter((i) => Math.abs(i.transform[5] - t0) < 2).map((i) => i.str).join(' ').replace(/\s+/g, ' ').trim();
+    return { W, H, text: true, first, box: [x0, y0, x1, y1] };
+  }
+  const CHORD = /^[A-G][#b]?(m|maj|M|min|dim|aug|sus|add)?\d*(M|maj\d*)?(\/[A-G][#b]?)?$/;
+  function looksLikeTitle(line) {
+    if (!/^[^\[\]|]{2,70}\s[-–]\s[^\[\]|]{2,70}$/.test(line)) return false;
+    const toks = line.split(/[\s–-]+/).filter(Boolean);
+    return !toks.every((t) => CHORD.test(t) || /^x\d+$/i.test(t));
+  }
+  /*ANALYZE-END*/
+
+  /* ---------- split a PDF into songs ---------- */
+  let split = null;
+  async function startSplit(blob) {
+    $('libStatus').textContent = 'Reading the PDF…';
+    try {
+      const doc = await loadPdf(blob);
+      const pages = [];
+      for (let i = 1; i <= doc.numPages; i++) {
+        const a = await analyzePage(await doc.getPage(i));
+        const isTitle = looksLikeTitle(a.first);
+        pages.push({
+          n: i, first: a.first, text: a.text, start: i === 1 || isTitle,
+          title: isTitle ? a.first : (i === 1 ? blob.name.replace(/\.[^.]+$/, '') : 'Song from page ' + i),
+        });
+      }
+      split = { blob, file: { type: 'application/pdf', data: await blob.arrayBuffer() }, pages };
+      $('libStatus').textContent = '';
+      $('libView').hidden = true; $('splitView').hidden = false;
+      window.scrollTo(0, 0);
+      renderSplit();
+    } catch (e) { $('libStatus').textContent = 'This PDF could not be read.'; }
+  }
+  function renderSplit() {
+    const list = $('splitList'), keep = window.scrollY;
+    list.textContent = '';
+    const found = split.pages.filter((p) => p.start).length;
+    $('splitInfo').textContent = 'This PDF has ' + split.pages.length + ' pages and ' + found + (found === 1 ? ' song' : ' songs') + '. If the list looks right, tap the blue Save button at the bottom. If a song is stuck to the one above it, scroll to its first page and turn its switch on.';
+    for (const p of split.pages) {
+      const row = document.createElement('div'); row.className = 'prow' + (p.start ? ' start' : '');
+      const num = document.createElement('span'); num.className = 'pnum'; num.textContent = 'p.' + p.n;
+      const mid = document.createElement('div'); mid.className = 'pmid';
+      if (p.start) {
+        const t = document.createElement('input'); t.className = 'ptitle'; t.value = p.title; t.setAttribute('aria-label', 'Title of song starting on page ' + p.n);
+        t.oninput = () => (p.title = t.value);
+        mid.appendChild(t);
+      } else {
+        const sn = document.createElement('div'); sn.className = 'psnip'; sn.textContent = p.first || (p.text ? '' : 'Picture page');
+        mid.appendChild(sn);
+      }
+      const lab = document.createElement('label'); lab.className = 'plab'; lab.textContent = 'New song';
+      const tg = document.createElement('input'); tg.type = 'checkbox'; tg.className = 'toggle'; tg.checked = p.start; tg.disabled = p.n === 1;
+      tg.onchange = () => { p.start = tg.checked; renderSplit(); };
+      lab.prepend(tg);
+      row.append(num, mid, lab);
+      list.appendChild(row);
+    }
+    window.scrollTo(0, keep);
+    const n = split.pages.filter((p) => p.start).length;
+    $('splitSave').textContent = n === 1 ? 'Save 1 song' : 'Save ' + n + ' songs';
+  }
+  $('splitCancel').onclick = () => { split = null; $('splitView').hidden = true; $('libView').hidden = false; };
+  $('splitSave').onclick = async () => {
+    const starts = split.pages.filter((p) => p.start), total = split.pages.length, now = Date.now();
+    try {
+      for (let i = 0; i < starts.length; i++) {
+        const p = starts[i], end = i + 1 < starts.length ? starts[i + 1].n - 1 : total;
+        await putSong({
+          id: now.toString(36) + i, added: now - i, name: p.title.trim() || 'Song from page ' + p.n,
+          kind: 'pdf', files: [split.file], from: p.n, to: end, dur: 180, count: true,
+        });
+      }
+      const kept = (await allSongs()).length;
+      $('libStatus').textContent = kept + (kept === 1 ? ' song is' : ' songs are') + ' saved on this phone.';
+    } catch (e) { $('libStatus').textContent = 'Could not save. The phone may be out of space.'; }
+    split = null; $('splitView').hidden = true; $('libView').hidden = false; renderLib();
+  };
+
+  /* ---------- sheet rendering ---------- */
+  let urls = [], renderToken = 0;
+  async function buildSheet(song) {
+    const token = ++renderToken, sheet = $('sheet');
+    urls.forEach((u) => URL.revokeObjectURL(u)); urls = [];
+    sheet.textContent = '';
+    if (song.kind === 'img') {
+      for (const b of songBlobs(song)) {
+        const u = URL.createObjectURL(b); urls.push(u);
+        const im = document.createElement('img'); im.src = u; im.alt = ''; sheet.appendChild(im);
+      }
+    } else {
+      const doc = await loadPdf(songBlobs(song)[0]);
+      const from = song.from || 1, to = song.to || doc.numPages;
+      const infos = [];
+      for (let i = from; i <= to; i++) infos.push({ page: await doc.getPage(i) });
+      for (const o of infos) o.info = await analyzePage(o.page);
+      const texts = infos.filter((o) => o.info.text);
+      const W = infos[0].info.W;
+      let X0 = 0, X1 = W;
+      if (texts.length) {
+        X0 = Math.max(0, Math.min(...texts.map((o) => o.info.box[0])) - 12);
+        X1 = Math.min(W, Math.max(...texts.map((o) => o.info.box[2])) + 12);
+      }
+      const cssW = sheet.clientWidth || 360, dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+      for (const o of infos) {
+        if (token !== renderToken) return;
+        const { H, text, box } = o.info;
+        const bx0 = text ? X0 : 0, bx1 = text ? X1 : o.info.W;
+        const by0 = text ? Math.max(0, box[1] - 10) : 0, by1 = text ? Math.min(H, box[3] + 10) : H;
+        const sc = (cssW / (bx1 - bx0)) * dpr;
+        const vp = o.page.getViewport({ scale: sc });
+        const c = document.createElement('canvas');
+        c.width = Math.round((bx1 - bx0) * sc); c.height = Math.round((by1 - by0) * sc);
+        sheet.appendChild(c);
+        await o.page.render({ canvasContext: c.getContext('2d'), viewport: vp, intent: 'print', transform: [1, 0, 0, 1, -bx0 * sc, -by0 * sc] }).promise;
+      }
+    }
+    const pad = document.createElement('div'); pad.className = 'pad'; sheet.appendChild(pad);
+  }
+
+  /* ---------- views ---------- */
+  async function openSong(song) {
+    S.song = song; S.dur = song.dur || 180; S.count = song.count !== false;
+    $('libView').hidden = true; $('playView').hidden = false;
+    document.body.classList.add('playing');
+    $('songTitle').textContent = song.name;
+    syncUI();
+    $('tapnote').hidden = false; setTimeout(() => ($('tapnote').hidden = true), 4000);
+    $('sheet').scrollTop = 0; S.pos = 0;
+    try { await buildSheet(song); syncUI(); }
+    catch (e) { $('sheet').innerHTML = '<p style="color:#fff;padding:24px">This file could not be opened.</p>'; }
+  }
+  function closeSong() {
+    stop(); renderToken++;
+    $('playView').hidden = true; $('libView').hidden = false;
+    document.body.classList.remove('playing');
+    armed = null; renderLib();
+  }
+  $('backBtn').onclick = closeSong;
+
+  /* ---------- controls ---------- */
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  let saveT;
+  function save() {
+    clearTimeout(saveT);
+    saveT = setTimeout(() => { if (S.song) { S.song.dur = S.dur; S.song.count = S.count; putSong(S.song).catch(() => {}); } }, 400);
+  }
+  function syncUI() {
+    const sh = $('sheet'), max = Math.max(1, sh.scrollHeight - sh.clientHeight);
+    const at = S.scrolling ? S.pos : sh.scrollTop;
+    $('durNum').textContent = fmt(S.dur); $('durRange').value = S.dur; $('countT').checked = S.count;
+    $('paceOut').textContent = '-' + fmt(S.dur * (1 - Math.min(1, at / max)));
+    $('playBtn').innerHTML = S.playing ? ICON_PAUSE : ICON_PLAY;
+    $('playBtn').setAttribute('aria-label', S.playing ? 'Pause' : 'Play');
+  }
+  function setDur(v) { S.dur = clamp(Math.round(v), 20, 900); syncUI(); save(); }
+  function hold(btn, fn) {
+    let t, iv;
+    const end = () => { clearTimeout(t); clearInterval(iv); };
+    btn.addEventListener('pointerdown', (e) => { e.preventDefault(); fn(); t = setTimeout(() => (iv = setInterval(fn, 90)), 380); });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => btn.addEventListener(ev, end));
+    btn.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); } });
+    btn.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+  hold($('durDown'), () => setDur(S.dur - 5));
+  hold($('durUp'), () => setDur(S.dur + 5));
+  $('durRange').oninput = (e) => setDur(+e.target.value);
+  $('countT').onchange = (e) => { S.count = e.target.checked; save(); };
+  $('topBtn').onclick = () => { if (S.playing) stop(); $('sheet').scrollTop = 0; S.pos = 0; syncUI(); };
+
+  /* ---------- scrolling ---------- */
+  let ac, wake, startTimers = [], lastUi = 0;
+  function blip(t, hi) {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.frequency.value = hi ? 1500 : 1000; o.connect(g); g.connect(ac.destination);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5, t + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+    o.start(t); o.stop(t + 0.09);
+  }
+  function frame(now) {
+    if (!S.scrolling) return;
+    const sheet = $('sheet'), dt = (now - S.last) / 1000; S.last = now;
+    const max = sheet.scrollHeight - sheet.clientHeight;
+    S.pos += (max / S.dur) * dt;
+    if (S.pos >= max) { sheet.scrollTop = max; stop(); return; }
+    sheet.scrollTop = S.pos;
+    if (now - lastUi > 500) { lastUi = now; syncUI(); }
+    S.raf = requestAnimationFrame(frame);
+  }
+  async function play() {
+    if (S.playing) return;
+    S.playing = true; syncUI();
+    try { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); await ac.resume(); } catch (e) {}
+    try { wake = await navigator.wakeLock.request('screen'); } catch (e) {}
+    $('tapnote').hidden = true;
+    const sheet = $('sheet'), max = sheet.scrollHeight - sheet.clientHeight;
+    if (sheet.scrollTop >= max - 2) sheet.scrollTop = 0;
+    S.pos = sheet.scrollTop;
+    const lead = S.count ? 3 : 0;
+    for (let i = 0; i < lead; i++) {
+      if (ac) blip(ac.currentTime + 0.05 + i, i === 0);
+      startTimers.push(setTimeout(() => { $('count').hidden = false; $('count').textContent = lead - i; }, 50 + i * 1000));
+    }
+    startTimers.push(setTimeout(() => {
+      $('count').hidden = true;
+      S.scrolling = true; S.last = performance.now(); S.raf = requestAnimationFrame(frame);
+    }, 50 + lead * 1000));
+  }
+  function stop() {
+    S.playing = false; S.scrolling = false; cancelAnimationFrame(S.raf);
+    startTimers.forEach(clearTimeout); startTimers = [];
+    $('count').hidden = true;
+    if (wake) { wake.release().catch(() => {}); wake = null; }
+    syncUI();
+  }
+  $('playBtn').onclick = () => (S.playing ? stop() : play());
+  $('sheet').addEventListener('click', () => (S.playing ? stop() : play()));
+  // Touching or dragging the sheet pauses auto-scroll so the player can move it by hand.
+  ['touchmove', 'wheel'].forEach((ev) => $('sheet').addEventListener(ev, () => { if (S.playing) stop(); }, { passive: true }));
+  $('sheet').addEventListener('scroll', () => { if (!S.scrolling) syncUI(); }, { passive: true });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && S.playing) stop(); });
+
+  // Ask the phone to keep this app's saved songs instead of clearing them when space is low.
+  try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  syncUI();
+  renderLib();
+})();
+</script>
+
+</body>
+</html>
